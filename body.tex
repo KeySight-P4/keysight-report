@@ -1,0 +1,252 @@
+\section{Introduction}
+
+In this technique report, we will present technical materials including proof, algorithm analysis, and detailed evaluation results for KeySight which is submitted to KeySight submitted for ICNP 2018.
+
+% This is a lits of what are presented by this paper.
+
+% \begin{itemize}
+% \item \textbf{Analysis of P4 program}
+% \item \textbf{Analysis of Field Replication Algorithm}
+% \item \textbf{Analysis of }
+% \end{itemize}
+
+
+\section{Analysis of P4 Spec}
+We analyze P4 \cite{p4} language in term of primitive actions and special components. As there is no rigorous model for P4 language, we conduct this analysis through inference of the descriptions in P4 specification. This analysis partially answers what KeySight can see and verify at runtime. More specially, this analysis is the basis of KeyAnalyzer. The analysis result of P4 primitive actions is shown in Table \ref{tbl:primitive-actions}.
+
+% And we can treat the new header as a parsed header outputted by the parser. Note that we should also record the validity of the new header, but we do not need to record the other fields in the new header unless the fields are read or written by in the remaining part of the P4 programs.
+To record replicated filed and some spacial fields that are not explicitly declared in P4 programs. We create a new metadata called $keysight\_metadata$ to store some particular fields, and we will specify which fields will be included according to the following analysis.
+
+
+
+
+\subsection{P4 Primitive Actions}
+We thoroughly analysis all primitive actions supplied by P4, and conclude inputs fields and output fields in Table \ref{tbl:primitive-actions}. We categorize those primitive actions into Header Modification Actions, Field Modification Actions, Stateful Component Actions, and Forwarding-Related Actions. Furthermore, the principle and rationale of our judgment about whether a primitive action can be fully supported is also presented. In the remaining part of this section, we will respectively investigate these primitive actions. 
+
+
+\begin{table*}[!tbp]
+\small
+\centering
+\caption{Summery of P4 primitive actions.}
+\label{tbl:primitive-actions}
+\begin{tabular} 
+{|m{0.3\linewidth}|m{0.28\linewidth}|m{0.12\linewidth}|m{0.12\linewidth}|m{0.11\linewidth}|}
+%{|m{0.18\linewidth}|m{0.3\linewidth}|m{0.13\linewidth}|m{0.13\linewidth}|m{0.13\linewidth}|}
+\hline
+\textbf{Primitive actions} & \textbf{Descriptions from P4 Spec} & \textbf{Input fields} & \textbf{Output Fields} & \textbf{Full Support} \\
+\hline
+\hline
+ \textit{\textbf{add\_header (hdr)}} & Add a new header into the original header stack &  & hdr\_valid & Y \\
+\hline
+ \textbf{\textit{copy\_header (hdr)}} & Copy one header instance to another &  & hdr\_valid & Y \\
+\hline
+ \textit{\textbf{remove\_header (hdr)}} & Pop the indicated header from the stack & & hdr\_valid & \\
+\hline
+ \textit{\textbf{modify\_field (dest, src)}} & As its name & src & dest & Y \\
+\hline
+ \textbf{\textit{add\_to\_field (dest, src)}} & Add a value to a field & src, dest & dest & Y \\
+\hline
+ \textbf{\textit{add (dest, value1, value2)}} & Add value1 and value2 and store in dest & value1, value2 & dest & Y \\
+\hline
+ \textit{\textbf{subtract\_from\_field (dest, value)}} & Subtract a value from a field & dest & dest & Y \\
+\hline
+ \textit{\textbf{subtract (dest, value1, value2)}} & Subtract value2 from value1 and store in dest & value1, value2 & dest & Y \\
+\hline
+ \textit{\textbf{modify\_field\_with\_hash\_based\_offset (dest, base, field\_list\_calc, size)}} & Apply a field list calculation to compute a hash value & fields in the calculation field list & dest & Y \\
+\hline
+ \textit{\textbf{modify\_field\_rng\_uniform {\color{white} XXXXX} (dest, lower\_bound, upper\_bound)}} & Generate a random integer number from a given range & lower\_bound, upper\_bound & dest & Y \\
+\hline
+ \textit{\textbf{bit\_and (dest, value1, value2)}} & Compute a bitwise AND of two values & value1, value2 & dest & Y \\
+\hline
+ \textit{\textbf{bit\_or(dest, value1, value2)}} & Compute a bitwise OR of two values& value1, value2 & dest & Y \\
+\hline
+ \textit{\textbf{bit\_xor (dest, value1, value2)}} & Compute a bitwise XOR of two values & value1, value2 & dest & Y \\
+\hline
+\textit{\textbf{shift\_left (dest, value1, value2)}} & Bitwise shift left & value1, value2 & dest & Y \\
+\hline
+\textit{\textbf{shift\_right (dest, value1, value2)}} & Bitwise shift right & value1, value2 & dest & Y \\
+\hline
+\textit{\textbf{truncate (length)}} & Truncate the packet on egress & length & & Y \\
+\hline
+ \textit{\textbf{drop ()}} & Drop the packet on egress & & egress\_port & Y \\
+\hline
+ \textit{\textbf{no\_op ()}} & No operation & & & Y \\
+\hline
+ \textbf{\textit{push (array, count)}} & Push all header instances in an array down and add a new header at the top & count & & N \\
+\hline
+ \textbf{\textit{pop (array, count)}} & Pop header instances from the top of an array, moving subsequent elements up & count & & N \\
+\hline
+ \textbf{\textit{count (counter\_ref, index)}} & Update a counter & index &  & N \\
+\hline
+ \textbf{\textit{execute\_meter (meter\_ref, index, field)}} & Execute a meter operation & index & field  & N \\
+\hline
+\textbf{\textit{generate\_digest (receiver, field\_list)}} & Generate a digest of a packet and send to a receiver & receiver &  & N \\
+\hline
+register\_read (dest, register\_ref, index) & Read from a register & index & dest & Y \\
+\hline
+register\_write (register\_ref, index, value) & Write to a register & index & dest & Y \\
+\hline
+resubmit (field\_list) & Applied in the ingress pipeline, mark the packet to be resubmitted to the parser & field\_list & resubmit\_flag & Y \\
+\hline
+ recirculate (field\_list) & On egress, mark the packet to be resubmitted to the parser & field\_list & recirculate\_flag & Y \\
+\hline
+ clone\_ingress\_packet\_to\_ingress (clone\_spec, field\_list) & Generate a copy of the original packet and submit it to the ingress parser & clone\_spec, field\_list & clone\_flag & Y \\
+\hline
+ clone\_egress\_packet\_to\_ingress (clone\_spec, field\_list) & Generate a duplicate of the egress packet and submit it to the parser & clone\_spec, field\_list & clone\_flag & Y \\
+\hline
+ clone\_ingress\_packet\_to\_egress (clone\_spec, field\_list) & Generate a copy of the original packet and submit it to the Buffering Mechanism & clone\_spec, field\_list & clone\_flag & Y \\
+\hline
+ clone\_egress\_packet\_to\_egress (clone\_spec, field\_list) & Duplicate the egress version of the packet and submit it to the Buffering Mechanism & clone\_spec, field\_list & clone\_flag & Y \\
+\hline
+\end{tabular}
+\end{table*}
+
+
+
+\start{add\_header(hdr)}: This primitive action is to add a new header into a packet, and the fields in the header will be initialized to be zero. Further, $valid(hdr)$ will return true. As there is no field that records the validity of the $hdr$, we create a field called $hdr\_valid$ (1 bit) in $keysight\_metadata$. But the other fields in $hdr$ do not need to be recorded unless there are other reading or writing operations on these fields. Take $add\_header(vlan)$ as an example, we will add a new field $vlan\_valid$ in $keysight\_metadata$.  
+
+\start{copy\_header(hdr)}: This primitive action is to add  a header and copy an old header to the new header. And we can treat the new header as a parsed header outputted by the parser. Note that we should also record the validity of the new header, but we do not need to record the other fields in the new header unless the fields are read or written by in the remaining part of the P4 programs.
+
+\start{remove\_header(hdr)}: This primitive action is to remove a header from a packet. Just like \textit{add\_header(hdr)}, we create a field $hdr\_valid$ to record this primitive. For this primitive, the $hdr\_valid$ will be set to zero.
+
+\start{modify\_field(dest, src)}: This primitive action is to modify a field in the metadata or packet header with a value from the packet header, metadata, action parameters, or constants. Obviously, the output field of this primitive is $dest$, while the input of this primitive is $src$. An exception is that, when $src$ is a constant or action parameter, we should not treat it as an input field as their values are recorded by $dest$.  
+
+\start{add\_to\_field(dest, src) \& subtract\_from\_field(dest, src)}: This primitive action is to add/subtract a value $src$ to a field $dest$, \ie{} $dest = dest + src$. According to this equation, $dest$ can be viewed as the input field as well as the output field of this primitive. Further, if $src$ is not a constant or an action parameter, $src$ can also be viewed as an input field.
+
+\start{add(dest, value1, value2) \& subtract(dest, value1, value2)}: This primitive action is to modify a field $dest$ with the sum/difference of two values $value1$ and $value2$, \ie{} $dest = value1 + value2$. According to this equation, $dest$ can be viewed as the output field of this primitive. Further, if $value1$ and $value2$ are not constants or action parameters, they can also be viewed as input fields.
+
+\start{modify\_field\_with\_hash\_based\_offset (dest, base, field\_list\_calc, size)}: This primitive action is to modify a field through conducting a hash function on a list of fields. $dest$ can be viewed as the input field of this primitive action, while the fields that are Hashed can be viewed as the input fields.
+
+\start{modify\_field\_rng\_uniform (dest, lower\_bound, upper\_bound)}: This primitive action is to modify a field $dest$ with a random value, \ie{} $dest = random(lower\_bound, upper\_bound)$. If $lower\_bound$ and $upper\_bound$ are not constants or action parameters, they can also be viewed input fields.
+
+\start{bit\_and (dest, value1, value2) \& bit\_or (dest, value1, value2) \& bit\_xor (dest, value1, value2)}: These primitives conduct bitwise operations. $dest$ is the output field of this primitive. And if $value1$ and $value2$ are not constants or action parameters, they can also be viewed as input fields.
+
+\start{ shift\_right (dest, value1, value2) \&  shift\_left (dest, value1, value2)}: These primitives conduct bit shifting operations. $dest$ is the output field of this primitive. And if $value1$ and $value2$ are not constants or action parameters, they can also be viewed as input fields.
+
+
+\start{truncate (length)}: This primitive action is to cut down the number of bytes in a packet as specified by $length$. So for this action, the input field is $length$, and we create a field called $packet\_length$ (16 bits) in $keysight_metadata$ to store this value.
+
+\start{drop ()}: This primitive action is to drop a packet. Further, this action uses different mechanisms to drop packets at the ingress pipeline and the egress pipeline. In the ingress pipeline, the P4 target drops packets through modifying the egress port of a packet to a special value, such as 255 in BMv2 \cite{bmv2-P4}. Then, in the egress pipeline, the P4 target will set a special flag to drop packets. Thus for this action, we should use different fields to denote its output field. We should use $standard\_metadata.egress\_spec$ as the output field when this action is invoked in the ingress pipeline, while we should create a new field called $egress\_drop\_flag$ (1 bit) in $keysight\_metadata$  when this action is invoked at the egress pipeline.
+% So for this action, the input field is $length$, and we create a field called $packet\_length$ in $keysight_metadata$ to store this value.
+
+\start{no\_op ()}: This primitive action has no effect on packets, thus it has no input field and output field.
+
+\start{push (array, count) \& pop (array, count)}: These two actions add or remove packet headers from the packet stack, such as the MPLS packet stack. As $count$ various, we can not record the header validity as $add\_header$, thud we cannot model the output fields oof these actions. But we can use create a new field for $count$ to record how many headers are added or removed from the header stack. Take $push(mpls, 1)$ as an example, then we add a field called $mpls\_count$ in $keysight\_metadata$.
+
+\start{count (counter\_ref, index)}: This primitive action is used to explicitly count the number of packets or the bytes of packets. We can only record which counter is referred by this packet through $index$, but we could know the exact counter value as the counter value is concealed from P4 programs. We should create a new field to store the counter index. Take $count(byte\_counter, 1)$ as an example, and we should create a field called $byte\_counter\_index$ in $keysight\_metadata$.
+
+\start{execute\_meter (meter\_ref, index, field)}: This primitive action is used to execute a meter over the traffic. Just like $count (counter\_ref, index)$, we should create the index field to act as the input field. Further, this action outputs the color of the meter through $field$ which can be used as the output field. Take $execute\_meter (byte_meter, 1, meter.color)$ as an example, and we should
+
+\start{generate\_digest (receiver, field\_list)}: 
+
+
+\section{Analysis of Filed Replication Algorithm}
+
+
+% \section{Survey of P4 Applications}
+
+
+
+\subsection{Time and Space Complexity}
+We evaluate the run-time complexity for the worst-case scenario of the field replication algorithm by examining the structure of the algorithm and making some simplifying assumptions.
+
+In the algorithm, KS denotes the key structure, V denotes the processing unit set and E denotes the control flow sequence. In our research, we assume the graph is a DAG. $O_{v}$,  $O^{c}_{v}$, $R_{v}$, $R^{a}_{v}$, $I_{v}$ respectively represent the output of the vertex v, the copy of output of the vertex v, the replication of output of the vertex v, the pending replication of output of the vertex v and the input of the vertex v.
+
+Actually, we have omitted the part where we initialize the sets which include $O_{v}$,  $O^{c}_{v}$, $R_{v}$, $R^{a}_{v}$, $I_{v}$ as empty sets in Algorithm 1. We denote K as the maximum of the numbers of possible values for each domain, $|V|$ as the amount of vertexes and $|E|$ as that of edges. Further, we use F to denote a set of all field in headers and metadata of a P4 program, thus $|F|$ is the number of fields. Besides that, we mark each line with a number in order to illustrate the time and space complexity conveniently.
+
+Say that the actions carried out in line 1 are considered to consume time T1, line 2 uses time T2, and so forth.
+In the algorithm above, lines 1, 2, 14 will only be run once. Thus the total amount of time to run lines 1，2 and 14 is:
+$ T_{1}+T_{2}+T_{14}.$ Apparently, $ T_{1} = O(1)$. For line 2, since the number of edges and vertexes are generally limited in our P4 programs, we can use the Kahn algorithm to accomplish the topological sort and thus $ T_{2} = O(|V| + |E|)$. As for line 14, the union process is executed scanning every domain of $R^{a}_{v}$ and the corresponding domain of $KS$, therefore $ T_{14} = O(|F|)$.
+
+To estimate the complexity of For loop more accurately, we can divide it as two parts: lines 4-9 and lines 10-15, the latter of which is simpler to understand.
+
+Considering the number of domains in P4 programs are usually limited, we can use hash tables to implement the union, intersection, and subtraction operation of sets without collision and we just need to scan the two sets to build the specific hash tables. In conclusion, we can achieve the operations in lines 10-14 with the time complexity $O(M)$ and the total time consumption $T_{10} + T_{11} + T_{12} + T_{13} + T_{14}$ equals to $O( |V||F| + 3|V||F| + 3|V||F| + |V|+|F|)$, that is $O(|V||F| + |V|)$, because lines 10-13 are executed for each vertex in the graph.
+
+
+For lines 4-9, we could find it that the traversals of all the children of vertices actually need $O(E)$ time since the most inner operations will be executed for each edge. Mentioning that the union, intersection, and subtraction operation of sets can be finished in $O(M)$ time, the time complexity of lines 4-9 is $T_{4} + T_{5} + T_{6} + T_{7} + T_{8} + T_{9}$ is $O(|E||F|)$.
+
+Therefore 
+\begin{displaymath}
+\sum_{i=1}^{17}T_{i}= O(|V|+|E|+|F|+|V||F|+|E||F|) =O(|F|(|V|+|E|))
+\end{displaymath}
+
+
+As for space complexity, each vertex has sets of input, output, pending replication and replication, all of which consume $O(|F|K)$ space. In total, the space consumption is O(|V||F|K). Apart from that, KS requires space of $O(|F|K)$ complexity and the initial adjacency list for the control flow graph demands $(|V|+|E|)$ space. So the total space complexity is $O(|V||F|K+|E|)$.
+
+\begin{algorithm}[!t]
+\LinesNumbered
+\KwIn{A control flow graph G = (V, E)}
+\KwOut{A key structure}
+$KS \leftarrow \emptyset$ \;
+$ V^{*} \leftarrow $ Reverse(TopologicalSort(V, E)) \;
+\ForEach{$v$ in $V^{*}$} {
+    \ForEach{child vertex $v'$ of $v$} {
+    	$O^c_v \leftarrow O^c_v \cup O^c_{v'}$ \;
+    	$ R_v \leftarrow R_v \cup ( O_v \cap O^c_{v'} ) $ \;
+    	$ R_v \leftarrow R_v \cup ( O_v \cap R_{v'}^a )$ \;
+        $ R^a_v \leftarrow R^a_v \cup R^a_{v'}  $ \;
+    }    
+	$O^c_v \leftarrow O^c_v \cup O_v $ \;
+    $R^a_v \leftarrow (R^a_v \setminus R_v) \cup (I_v \cap O^c_v) $ \;
+    \textit{KS} $\leftarrow$ \textit{KS} $ \cup \ O_v \cup I_v \cup \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R_v\} $\;
+    \If{$v$ is the last of $V^*$} {
+    	\textit{KS} $\leftarrow$ \textit{KS} $ \cup \ \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R^a_v\}  $\;
+    }
+}
+\KwRet{KS}\;
+\caption{Field Replica Algorithm}
+\label{alg:field-replica}
+\end{algorithm}
+
+% \section{Analysis of Streaming Bloom Filter}
+
+% The fraction of 1 every window is $\rho$. And we can get it from the following equation.
+
+% $$
+% \rho = \frac{(1 - \frac{1}{M})^N}{1 + (1 - \frac{1}{M \times B})^N}
+% $$
+
+\section{Analysis of Stream Bloom Filter}
+
+\newcommand{\Y}{{\color{red}$\checkmark$}}
+\newcommand{\N}{{\color{green}\textbf{$\times$}}}
+
+\begin{table}
+\small
+\centering
+\caption{Notation Summery of SBF and RBF.}
+\label{tbl:primitive-actions}
+\begin{tabular}{|m{0.15\linewidth}|m{0.30\linewidth}|m{0.08\linewidth}|m{0.08\linewidth}|m{0.15\linewidth}|}
+
+\hline
+\textbf{Notation} & \textbf{Description} & \textbf{RBF} & \textbf{SBF} & \textbf{Reconfig.} \\
+\hline
+\hline
+
+$K$ & \#arrays & \Y & \Y & \N \\
+\hline
+$M$ & \#cells per array & \Y & \Y & \N \\ 
+\hline
+$N$ & \#packets per block & \Y & \Y & \Y \\
+\hline
+$B$ & \#rings per cell & \N & \Y & \Y \\ 
+\hline
+$S$ & \#bits per ring & \Y & \Y & \Y \\
+\hline
+
+
+
+\end{tabular}
+
+\end{table}
+
+
+In this section, we will introduce the theoretical analysis of streaming bloom filter (SBF), including false negative rates and false positive rates. To be intuitive, we firstly demonstrate the parameters of SBF, then we will present the false positive rates and false negative rates of SBF in terms of recently-arrived packets. Finally, we will present the false positive rates and false negative rates for all packets in the stream.
+
+\subsection{Parameters of SBF}
+
+\subsection{Network-wide PEC Definition}
+
+\subsection{}
+
+
