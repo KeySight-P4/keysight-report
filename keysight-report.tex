@@ -218,9 +218,9 @@ We thoroughly analysis all primitive actions supplied by P4, and conclude inputs
 \subsection{Analysis of Other Components}
 
 
-\start{Hash value generator}: In P4, there a powerful method, namely field list cauculation,  to execute the hash value generation to satisfy vairous requirements, such as checksum calculation and so on. For those elements emploingy  field list calculation, KeyAnalyzer can easily 
+\start{Hash value generator}: In P4, there is a powerful method, namely field list calculation, to execute the hash value generation to satisfy various requirements, such as checksum calculation and attaining hash values. For those elements employing \textit{field list calculation}, KeyAnalyzer can take the field list in the calculation declaration. Then, the output field of field list calculation is determined by the invoked primitive actions. 
 
-\start{Action profile}: 
+\start{Action profile}: This component supports selecting executed action based on hash values (attained from the hash value generator) and can be applied to implement ECMP. This component can be also modeled by KeyAnalyzer, as KeyAnalyzer can fully analyze all the actions in a match action table and can identify inputs as well as outputs of each action. Thus, KeyAnalyzer does not require explicit identification of which action should be executed by a table entry and can support such a situation where the action to be executed is determined dynamically by packet header fields. 
 
 \section{Analysis of Filed Replication Algorithm}
 
