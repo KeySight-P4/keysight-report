@@ -1,3 +1,74 @@
+\documentclass[sigconf]{acmart}
+
+\usepackage[english]{babel}
+\usepackage{blindtext}
+\usepackage[leqno]{amsmath}
+%\usepackage{amsmath}
+%\usepackage{algorithmic}
+\usepackage[ruled]{algorithm2e}
+\usepackage{array}
+\usepackage{url}
+\usepackage{epstopdf}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{multicol}
+\usepackage{tabu}
+\usepackage{listings}
+\usepackage{makecell}
+\usepackage{romannum}
+\usepackage{enumerate}
+\usepackage{array}
+\usepackage{color}
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{subfigure}
+\usepackage{upgreek}
+\usepackage{xcolor}
+\usepackage{longtable}
+% Copyright
+\renewcommand\footnotetextcopyrightpermission[1]{} % removes footnote with conference info
+\setcopyright{none}
+%\setcopyright{acmcopyright}
+%\setcopyright{acmlicensed}
+%\setcopyright{rightsretained}
+%\setcopyright{usgov}
+%\setcopyright{usgovmixed}
+%\setcopyright{cagov}
+%\setcopyright{cagovmixed}
+
+\settopmatter{printacmref=false, printccs=false, printfolios=true}
+\acmConference[]{ICNP}{ICNP}{2018}
+
+\begin{document}
+\title{A Technique Report for KeySight}
+
+%\titlenote{Produces the permission block, and copyright information}
+\subtitle{For ICNP 2018 Submission}
+
+% \author{Firstname Lastname}
+% \authornote{Note}
+% \orcid{1234-5678-9012}
+% \affiliation{%
+%   \institution{Affiliation}
+%   \streetaddress{Address}
+%   \city{City} 
+%   \state{State} 
+%   \postcode{Zipcode}
+% }
+% \email{email@domain.com}
+
+% The default list of authors is too long for headers}
+\renewcommand{\shortauthors}{Anonymous Authors}
+\newcommand{\start}[1]{\vspace{5pt}\noindent\textbf{#1}}
+\newcommand{\ie}{\emph{i.e.,}}
+\newcommand{\eg}{\emph{e.g.,}}
+\newcommand{\etal}{\emph{et al.}\xspace}
+
+\maketitle
+
+% \title{A Technique Report for KeySight}
+
 \section{Introduction}
 
 In this technique report, we will present technical materials including proof, algorithm analysis, and detailed evaluation results for KeySight which is submitted to KeySight submitted for ICNP 2018.
@@ -261,3 +332,9 @@ In this section, we will introduce the theoretical analysis of streaming bloom f
 \subsection{}
 
 
+
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{reference}
+
+\end{document}
