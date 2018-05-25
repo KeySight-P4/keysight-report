@@ -124,6 +124,7 @@ We thoroughly analysis all primitive actions supplied by P4, and conclude inputs
 \start{ shift\_right (dest, value1, value2) \&  shift\_left (dest, value1, value2)}: These primitives conduct bit shifting operations. $dest$ is the output field of this primitive. And if $value1$ and $value2$ are not constants or action parameters, they can also be viewed as input fields.
 
 
+
 \start{truncate (length)}: This primitive action is to cut down the number of bytes in a packet as specified by $length$. So for this action, the input field is $length$, and we create a field called $packet\_length$ (16 bits) in $keysight_metadata$ to store this value.
 
 \start{drop ()}: This primitive action is to drop a packet. Further, this action uses different mechanisms to drop packets at the ingress pipeline and the egress pipeline. In the ingress pipeline, the P4 target drops packets through modifying the egress port of a packet to a special value, such as 255 in BMv2 \cite{bmv2-P4}. Then, in the egress pipeline, the P4 target will set a special flag to drop packets. Thus for this action, we should use different fields to denote its output field. We should use $standard\_metadata.egress\_spec$ as the output field when this action is invoked in the ingress pipeline, while we should create a new field called $egress\_drop\_flag$ (1 bit) in $keysight\_metadata$  when this action is invoked at the egress pipeline.
@@ -144,6 +145,13 @@ We thoroughly analysis all primitive actions supplied by P4, and conclude inputs
 \start{clone\_egress\_packet\_to\_egress (clone\_spec, field\_list) \& clone\_ingress\_packet\_to\_egress (clone\_spec, field\_list)} : These actions clone packets into the egress pipeline or the ingress pipeline. The cloned packets are viewed as new packets in KeySight. So we can just record whether the current packet are cloned with new fields $clone\_ingress\_flag$ and $clone\_egress\_flag$ in $keysight\_metadata$.
 
 \subsection{Analysis of Other Components}
+
+
+\start{Checksum}: 
+
+\start{File list calculation}: 
+
+\start{Action profile}: 
 
 \section{Analysis of Filed Replication Algorithm}
 
