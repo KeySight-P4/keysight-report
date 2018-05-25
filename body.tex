@@ -82,21 +82,21 @@ We thoroughly analysis all primitive actions supplied by P4, and conclude inputs
 \hline
 \textbf{\textit{generate\_digest (receiver, field\_list)}} & Generate a digest of a packet and send to a receiver & receiver &  & N \\
 \hline
-register\_read (dest, register\_ref, index) & Read from a register & index & dest & Y \\
+\textbf{\textit{register\_read (dest, register\_ref, index)}} & Read from a register & index & dest & Y \\
 \hline
-register\_write (register\_ref, index, value) & Write to a register & index & dest & Y \\
+\textbf{\textit{register\_write (register\_ref, index, value)}} & Write to a register & index & dest & Y \\
 \hline
-resubmit (field\_list) & Applied in the ingress pipeline, mark the packet to be resubmitted to the parser & field\_list & resubmit\_flag & Y \\
+\textbf{\textit{resubmit (field\_list)}} & Applied in the ingress pipeline, mark the packet to be resubmitted to the parser &  & resubmit\_flag & Y \\
 \hline
- recirculate (field\_list) & On egress, mark the packet to be resubmitted to the parser & field\_list & recirculate\_flag & Y \\
+\textbf{\textit{recirculate (field\_list)}} & On egress, mark the packet to be resubmitted to the parser &  & recirculate\_flag & Y \\
 \hline
- clone\_ingress\_packet\_to\_ingress (clone\_spec, field\_list) & Generate a copy of the original packet and submit it to the ingress parser & clone\_spec, field\_list & clone\_flag & Y \\
+\textbf{\textit{clone\_ingress\_packet\_to\_ingress (clone\_spec, field\_list)}} & Generate a copy of the original packet and submit it to the ingress parser & clone\_spec & clone\_flag & Y \\
 \hline
- clone\_egress\_packet\_to\_ingress (clone\_spec, field\_list) & Generate a duplicate of the egress packet and submit it to the parser & clone\_spec, field\_list & clone\_flag & Y \\
+\textbf{\textit{clone\_egress\_packet\_to\_ingress (clone\_spec, field\_list)}} & Generate a duplicate of the egress packet and submit it to the parser & clone\_spec & clone\_flag & Y \\
 \hline
- clone\_ingress\_packet\_to\_egress (clone\_spec, field\_list) & Generate a copy of the original packet and submit it to the Buffering Mechanism & clone\_spec, field\_list & clone\_flag & Y \\
+\textbf{\textit{clone\_ingress\_packet\_to\_egress (clone\_spec, field\_list)}} & Generate a copy of the original packet and submit it to the Buffering Mechanism & clone\_spec & clone\_flag & Y \\
 \hline
- clone\_egress\_packet\_to\_egress (clone\_spec, field\_list) & Duplicate the egress version of the packet and submit it to the Buffering Mechanism & clone\_spec, field\_list & clone\_flag & Y \\
+\textbf{\textit{clone\_egress\_packet\_to\_egress (clone\_spec, field\_list)}} & Duplicate the egress version of the packet and submit it to the Buffering Mechanism & clone\_spec & clone\_flag & Y \\
 \hline
 \end{tabular}
 \end{table*}
@@ -135,10 +135,15 @@ resubmit (field\_list) & Applied in the ingress pipeline, mark the packet to be 
 
 \start{count (counter\_ref, index)}: This primitive action is used to explicitly count the number of packets or the bytes of packets. We can only record which counter is referred by this packet through $index$, but we could know the exact counter value as the counter value is concealed from P4 programs. We should create a new field to store the counter index. Take $count(byte\_counter, 1)$ as an example, and we should create a field called $byte\_counter\_index$ in $keysight\_metadata$.
 
-\start{execute\_meter (meter\_ref, index, field)}: This primitive action is used to execute a meter over the traffic. Just like $count (counter\_ref, index)$, we should create the index field to act as the input field. Further, this action outputs the color of the meter through $field$ which can be used as the output field. Take $execute\_meter (byte_meter, 1, meter.color)$ as an example, and we should
+\start{execute\_meter (meter\_ref, index, field)}: This primitive action is used to execute a meter over the traffic. Just like $count (counter\_ref, index)$, we should create the index field to act as the input field. Further, this action outputs the color of the meter through $field$ which can be used as the output field. Take $execute\_meter (byte\_meter, 1, meter.color)$ as an example. We should create a new field $byte\_meter\_index$ in $keysight\_metadata$ and use this field as the input field of this primitive action. Then, $meter.color$ should be used for the output field.
 
-\start{generate\_digest (receiver, field\_list)}: 
+\start{generate\_digest (receiver, field\_list)}: This action is to generate a message to the switch CPU, and the input field of this action is $receiver$ (if it is not a constant or a action parameter), as $field\_list$ does not impact the packet processing behavior.
 
+\start{resubmit(field\_list) \& recirculate(field\_list)} : These primitive actions will resubmit packets into the ingress pipeline from the end of the ingress pipeline ($resubmit$) or the egress pipeline ($recirculate$). These actions will set a resubmitting flag to redirect packets. Then we can record this resubmit flag with a new field in $keysight\_metadata$.
+
+\start{clone\_egress\_packet\_to\_egress (clone\_spec, field\_list) \& clone\_ingress\_packet\_to\_egress (clone\_spec, field\_list)} : These actions clone packets into the egress pipeline or the ingress pipeline. The cloned packets are viewed as new packets in KeySight. So we can just record whether the current packet are cloned with new fields $clone\_ingress\_flag$ and $clone\_egress\_flag$ in $keysight\_metadata$.
+
+\subsection{Analysis of Other Components}
 
 \section{Analysis of Filed Replication Algorithm}
 
