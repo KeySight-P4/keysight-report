@@ -1,4 +1,4 @@
-\documentclass[sigconf]{acmart}
+\documentclass[sigconf, 10pt]{acmart}
 
 \usepackage[english]{babel}
 \usepackage{blindtext}
@@ -82,7 +82,7 @@ In this technique report, we will present technical materials including proof, a
 % \end{itemize}
 
 
-\section{Analysis of P4 Spec}
+\section{Analysis of P4 Specifiction}
 We analyze P4 \cite{p4} language in term of primitive actions and special components. As there is no rigorous model for P4 language, we conduct this analysis through inference of the descriptions in P4 specification. This analysis partially answers what KeySight can see and verify at runtime. More specially, this analysis is the basis of KeyAnalyzer. The analysis result of P4 primitive actions is shown in Table \ref{tbl:primitive-actions}.
 
 % And we can treat the new header as a parsed header outputted by the parser. Note that we should also record the validity of the new header, but we do not need to record the other fields in the new header unless the fields are read or written by in the remaining part of the P4 programs.
@@ -222,7 +222,11 @@ We thoroughly analysis all primitive actions supplied by P4, and conclude inputs
 
 \start{Action profile}: This component supports selecting executed action based on hash values (attained from the hash value generator) and can be applied to implement ECMP. This component can be also modeled by KeyAnalyzer, as KeyAnalyzer can fully analyze all the actions in a match action table and can identify inputs as well as outputs of each action. Thus, KeyAnalyzer does not require explicit identification of which action should be executed by a table entry and can support such a situation where the action to be executed is determined dynamically by packet header fields. 
 
-\section{Analysis of Filed Replication Algorithm}
+
+
+
+
+\section{Filed Replication Algorithm}
 
 
 % \section{Survey of P4 Applications}
@@ -237,7 +241,7 @@ In the algorithm, KS denotes the key structure, V denotes the processing unit se
 Actually, we have omitted the part where we initialize the sets which include $O_{v}$,  $O^{c}_{v}$, $R_{v}$, $R^{a}_{v}$, $I_{v}$ as empty sets in Algorithm 1. We denote K as the maximum of the numbers of possible values for each domain, $|V|$ as the amount of vertexes and $|E|$ as that of edges. Further, we use F to denote a set of all field in headers and metadata of a P4 program, thus $|F|$ is the number of fields. Besides that, we mark each line with a number in order to illustrate the time and space complexity conveniently.
 
 Say that the actions carried out in line 1 are considered to consume time T1, line 2 uses time T2, and so forth.
-In the algorithm above, lines 1, 2, 14 will only be run once. Thus the total amount of time to run lines 1，2 and 14 is:
+In the algorithm above, lines 1, 2, 14 will only be run once. Thus the total amount of time to run lines 1, 2 and 14 is:
 $ T_{1}+T_{2}+T_{14}.$ Apparently, $ T_{1} = O(1)$. For line 2, since the number of edges and vertexes are generally limited in our P4 programs, we can use the Kahn algorithm to accomplish the topological sort and thus $ T_{2} = O(|V| + |E|)$. As for line 14, the union process is executed scanning every domain of $R^{a}_{v}$ and the corresponding domain of $KS$, therefore $ T_{14} = O(|F|)$.
 
 To estimate the complexity of For loop more accurately, we can divide it as two parts: lines 4-9 and lines 10-15, the latter of which is simpler to understand.
@@ -258,8 +262,8 @@ As for space complexity, each vertex has sets of input, output, pending replicat
 \begin{algorithm}[!t]
 \LinesNumbered
 \KwIn{A control flow graph G = (V, E)}
-\KwOut{A key structure}
-$KS \leftarrow \emptyset$ \;
+\KwOut{A PEC representation (\textit{pec})}
+$pec \leftarrow \emptyset$ \;
 $ V^{*} \leftarrow $ Reverse(TopologicalSort(V, E)) \;
 \ForEach{$v$ in $V^{*}$} {
     \ForEach{child vertex $v'$ of $v$} {
@@ -270,12 +274,12 @@ $ V^{*} \leftarrow $ Reverse(TopologicalSort(V, E)) \;
     }    
 	$O^c_v \leftarrow O^c_v \cup O_v $ \;
     $R^a_v \leftarrow (R^a_v \setminus R_v) \cup (I_v \cap O^c_v) $ \;
-    \textit{KS} $\leftarrow$ \textit{KS} $ \cup \ O_v \cup I_v \cup \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R_v\} $\;
+    \textit{pec} $\leftarrow$ \textit{pec} $ \cup \ O_v \cup I_v \cup \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R_v\} $\;
     \If{$v$ is the last of $V^*$} {
-    	\textit{KS} $\leftarrow$ \textit{KS} $ \cup \ \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R^a_v\}  $\;
+    	\textit{pec} $\leftarrow$ \textit{pec} $ \cup \ \{r|\ \text{\textit{$r$ is a replica of $x$}}, x \in R^a_v\}  $\;
     }
 }
-\KwRet{KS}\;
+\KwRet{pec}\;
 \caption{Field Replica Algorithm}
 \label{alg:field-replica}
 \end{algorithm}
@@ -288,48 +292,68 @@ $ V^{*} \leftarrow $ Reverse(TopologicalSort(V, E)) \;
 % \rho = \frac{(1 - \frac{1}{M})^N}{1 + (1 - \frac{1}{M \times B})^N}
 % $$
 
-\section{Analysis of Stream Bloom Filter}
+
+\subsection{Proof for KeyAnalyzer}
+
+\section{Ring Bloom Filter}
 
 \newcommand{\Y}{{\color{red}$\checkmark$}}
 \newcommand{\N}{{\color{green}\textbf{$\times$}}}
 
-\begin{table}
-\small
-\centering
-\caption{Notation Summery of SBF and RBF.}
-\label{tbl:primitive-actions}
-\begin{tabular}{|m{0.15\linewidth}|m{0.30\linewidth}|m{0.08\linewidth}|m{0.08\linewidth}|m{0.15\linewidth}|}
-
-\hline
-\textbf{Notation} & \textbf{Description} & \textbf{RBF} & \textbf{SBF} & \textbf{Reconfig.} \\
-\hline
-\hline
-
-$K$ & \#arrays & \Y & \Y & \N \\
-\hline
-$M$ & \#cells per array & \Y & \Y & \N \\ 
-\hline
-$N$ & \#packets per block & \Y & \Y & \Y \\
-\hline
-$B$ & \#rings per cell & \N & \Y & \Y \\ 
-\hline
-$S$ & \#bits per ring & \Y & \Y & \Y \\
-\hline
-
-
-
-\end{tabular}
-
-\end{table}
-
-
 In this section, we will introduce the theoretical analysis of streaming bloom filter (SBF), including false negative rates and false positive rates. To be intuitive, we firstly demonstrate the parameters of SBF, then we will present the false positive rates and false negative rates of SBF in terms of recently-arrived packets. Finally, we will present the false positive rates and false negative rates for all packets in the stream.
 
-\subsection{Parameters of SBF}
+\begin{figure*}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{graphs/rbf.pdf}
+\caption{Architecture overview of Ring Bloom Filter.} 
+\label{fig:evaluation}
+
+\end{figure*}
+
+
+\subsection{Tune RBF}
+\small
+\begin{table*}
+\caption{Notation Summery of SBF and RBF. \Y{} denotes that this parameter can be dynamically adjusted in run time, while \N{} denotes this parameter is fixed in run time.}
+\label{tbl:rbf-parameter}
+\begin{tabular}{|m{0.08\linewidth}|m{0.25\linewidth}|m{0.18\linewidth}|m{0.09\linewidth}|m{0.09\linewidth}|m{0.09\linewidth}|m{0.09\linewidth}|}
+
+\hline
+\textbf{Notations} & \textbf{Description} & \textbf{BSBF/BSBFSD/RLBSBF} & \textbf{SBF} & \textbf{BFQ} & \textbf{RBF} & \textbf{Reconfig.} \\
+\hline
+\hline
+
+$S$ & \# of BFs & 1 & 1 & $>1$ & 1 & \N \\
+\hline
+$K$ & \# of Arrays per BF & $>1$ & $>1$ & $>1$ & $>1$ & \N \\ 
+\hline
+ & \# of Bits per Array & $M$ & $M \times Max $ & $M$ & $M \times B \times S$ & \N \\
+\hline
+$A$ & \# of Bits per Cell & 1 & $Max$ & 1  & $B \times S$ & \N \\ 
+\hline
+$B$ & \# of Rings per Cell & - & - & - & $>1$ & \Y \\ 
+\hline
+$S$ & \# of Bits per Ring & - & - & - & $>1$ & \Y \\ 
+\hline
+$M$ & \# of Cells per Array  & $>1$ & $>1$ & $>1$ & $>1$ & \Y \\ 
+\hline
+$N$ & \# of Packets per Block  & - & - & $>1$ & $>1$ & \Y \\ 
+\hline
+& \# of Recently-arrived Packets  & - & - & $N \times (S - 1)$ &$N \times (S - 1)$ & \Y \\
+\hline
+& \# of Total Bits  & $M \times K$ & $M \times K \times Max$ & $M \times K \times S$ &$M \times K \times S \times B$ & \N \\
+\hline
+\end{tabular}
+
+\end{table*}
+
+
+
 
 \subsection{Network-wide PEC Definition}
 
-\subsection{}
+In this report, we present a network-wide PEC definition. 
+
 
 
 
